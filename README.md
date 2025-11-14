@@ -4,8 +4,10 @@ FileManagerCpp is a lightweight file manager written in C++ using the Qt5 framew
 
 # Screenshots
 
-![Screenshot 1](images/screenshot1.png)
-![Screenshot 2](images/screenshot2.png)
+| Screenshot 1 | Screenshot 2 |
+|--------------|--------------|
+| ![](images/screenshot1.png) | ![](images/screenshot2.png) |
+
 
 # How to use?
 
