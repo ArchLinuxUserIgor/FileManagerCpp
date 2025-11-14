@@ -6,7 +6,7 @@ FileManagerCpp is a lightweight file manager written in C++ using the Qt5 framew
 
 # Linux
 
-First, install the package 'qt5-base'
+First, install the package `qt5-base`
 
 Then clone the repository:
 ```bash
@@ -29,7 +29,7 @@ After a successful build, run:
 ./fileManager
 ```
 
-You can also place the 'fileManager' binary somewhere in your $PATH to run it without './'.
+You can also place the `fileManager` binary somewhere in your $PATH to run it without `./`.
 
 Done! You can use my file manager
 
