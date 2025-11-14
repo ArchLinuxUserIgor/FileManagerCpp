@@ -2,6 +2,11 @@
 
 FileManagerCpp is a lightweight file manager written in C++ using the Qt5 framework.
 
+# Screenshots
+
+![Screenshot 1](images/screenshot1.png)
+![Screenshot 2](images/screenshot2.png)
+
 # How to use?
 
 # Linux
