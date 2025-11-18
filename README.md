@@ -8,6 +8,34 @@ FileManagerCpp is a lightweight file manager written in C++ using the Qt5 framew
 |--------------|--------------|
 | ![](images/screenshot1.png) | ![](images/screenshot2.png) |
 
+# Change Log
+
+• Reworked the style handling system: no more style-loading errors when the binary is moved. If the styles directory is located next to the binary or in `/usr/share/filemanager/`, everything works correctly (automatic style installation is planned for future updates).
+
+• You can now launch the file manager with a specific directory:
+```bash
+fileManager <path>
+```
+
+or
+
+```bash
+./fileManager <path>
+```
+
+Depending on whether the binary is included in `$PATH`.
+
+New features of this update:
+
+```bash
+fileManager .
+```
+• Opens the current terminal directory.
+
+```bash
+fileManager ~
+```
+• Opens the user’s home directory (`/root` for root, `/home/$USER` for regular users).
 
 # How to use?
 
