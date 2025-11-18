@@ -45,8 +45,10 @@ class MainWindow : public QMainWindow
 
 private slots:
     void changeThemeFunc();
+    QString detectStylePath();
     void styleReader(const QString &filename);
     void changeDir(const QModelIndex &index);
+    void changeDir(const QString& path);
     void goToParentOrChildDir();
     void showContextMenu(const QPoint &pos);
     void renameFunc(const QModelIndex &index, const QString &newName, const QString &originalName);
@@ -107,5 +109,6 @@ signals:
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void openPath(const QString& path);
 };
 #endif // MAINWINDOW_H

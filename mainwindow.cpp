@@ -11,7 +11,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     QWidget *centralWidget = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
-    centralWidget->setLayout(mainLayout);
     setCentralWidget(centralWidget);
 
     pathLayout = new QHBoxLayout(centralWidget);
@@ -111,6 +110,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     });
 
     QHBoxLayout *listLayout = new QHBoxLayout(centralWidget);
+    
 
     fileListView = new QListView(this);
     fileListView->setModel(fileSystem);
@@ -189,8 +189,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     connect(changeTheme, &QAction::triggered, this, &MainWindow::changeThemeFunc);
 
-    connect(fileListView, &QListView::doubleClicked, this, &MainWindow::changeDir);
-    connect(fileTreeView, &QTreeView::doubleClicked, this, &MainWindow::changeDir);
+    connect(fileListView, &QListView::doubleClicked, this, QOverload<const QModelIndex &>::of(&MainWindow::changeDir));
+    connect(fileTreeView, &QTreeView::doubleClicked, this, QOverload<const QModelIndex &>::of(&MainWindow::changeDir));
     connect(goToParent, &QAction::triggered, this, &MainWindow::goToParentOrChildDir);
     connect(downloadsBtn, &QPushButton::clicked, this, [=]() {
         QString homePath = QDir::homePath();
@@ -280,30 +280,84 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     QSettings settings("DadyaIgor", "FileManager");
     QString defStyle = settings.value("style", "darkStyle.qss").toString();
+    filename = defStyle;
     styleReader(defStyle);
-    filename = "darkStyle.qss";
+}
+
+QString MainWindow::detectStylePath() {
+    QString appDir = QCoreApplication::applicationDirPath();
+
+    QString localPath = appDir + "/styles";
+    if (QDir(localPath).exists())
+        return localPath;
+
+    QString optPath = "/opt/fileManager/share/fileManager/styles";
+    if (QDir(optPath).exists())
+        return optPath;
+
+    QString usrPath = "/usr/share/filemanager/styles";
+    if (QDir(usrPath).exists())
+        return usrPath;
+
+    return QString();
 }
 
 void MainWindow::styleReader(const QString &filename) {
-    QString localPath = QCoreApplication::applicationDirPath() + "/styles/" + filename;
-    QFile file(localPath);
-    if (!file.exists()) {
-        file.setFileName(":/styles/" + filename);
+    if (filename.isEmpty()) {
+        QMessageBox::warning(this, "Warning", "Empty style name");
+        return;
     }
 
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QString style = QString::fromUtf8(file.readAll());
-        setStyleSheet(style);
-        file.close();
-    } else {
-        QMessageBox::critical(this, "Failed", "Failed to open file", QMessageBox::StandardButton::Ok);
+    QFileInfo fi(filename);
+    QString baseName = fi.fileName();
+    if (!baseName.endsWith(".qss", Qt::CaseInsensitive)) {
+        baseName += ".qss";
     }
+
+    QFile file;
+    if (fi.isAbsolute() && QFile::exists(fi.absoluteFilePath())) {
+        file.setFileName(fi.absoluteFilePath());
+    } else {
+        QString stylesDir = detectStylePath();
+        if (!stylesDir.isEmpty()) {
+            QString candidate = stylesDir + QDir::separator() + baseName;
+            if (QFile::exists(candidate)) {
+                file.setFileName(candidate);
+            }
+        }
+
+        if (file.fileName().isEmpty()) {
+            QString resName = ":/styles/" + baseName;
+            if (QFile::exists(resName)) {
+                file.setFileName(resName);
+            }
+        }
+    }
+
+    if (file.fileName().isEmpty() || !file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, "Failed", "Failed to open style file: " + filename, QMessageBox::StandardButton::Ok);
+        return;
+    }
+
+    QString style = QString::fromUtf8(file.readAll());
+    setStyleSheet(style);
+    file.close();
 }
 
 void MainWindow::changeThemeFunc() {
-    filename = QFileDialog::getOpenFileName(this, "Load Style", "", "QSS File (*.qss)");
-    styleReader(filename);
+    QString startDir = detectStylePath();
+    if (startDir.isEmpty()) startDir = QDir::homePath();
+
+    QString selected = QFileDialog::getOpenFileName(this, "Load Style", startDir, "QSS Files (*.qss)");
+    if (selected.isEmpty()) return;
+
+    QFileInfo fi(selected);
+    QString baseName = fi.fileName();
+    filename = baseName;
+
+    styleReader(selected);
 }
+
 
 void MainWindow::changeDir(const QModelIndex &index) {
     if (!index.isValid()) return;
@@ -329,6 +383,17 @@ void MainWindow::changeDir(const QModelIndex &index) {
     } else {
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }
+}
+
+void MainWindow::changeDir(const QString& path) {
+    QDir dir(path);
+    if (!dir.exists()) {
+        QMessageBox::critical(this, "Failed", QString("Fail to open '%1': No such file or directory").arg(path), QMessageBox::StandardButton::Ok);
+        return;
+    }
+
+    pathBar->setPath(dir.absolutePath());
+    fileListView->setRootIndex(fileSystem->setRootPath(dir.absolutePath()));
 }
 
 void MainWindow::goToParentOrChildDir() {
@@ -661,6 +726,16 @@ void MainWindow::showContextMenu(const QPoint &pos) {
             copyPasteFunc(index);
         }
     }
+}
+
+void MainWindow::openPath(const QString& path) {
+    QString dir = QFileInfo(path).absoluteFilePath();
+
+    if (dir.startsWith("~")) {
+        dir.replace(0, 1, QDir::homePath());
+    }
+
+    changeDir(dir);
 }
 
 MainWindow::~MainWindow() {
