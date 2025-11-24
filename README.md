@@ -2,12 +2,15 @@
 
 FileManagerCpp is a lightweight file manager written in C++ using the Qt5 framework.
 
+<<<<<<< HEAD
 # Screenshots
 
 | Screenshot 1 | Screenshot 2 |
 |--------------|--------------|
 | ![](images/screenshot1.png) | ![](images/screenshot2.png) |
 
+=======
+>>>>>>> 4d5d32e (Read the change log)
 # Change Log
 
 • Reworked the style handling system: no more style-loading errors when the binary is moved. If the styles directory is located next to the binary or in `/usr/share/filemanager/`, everything works correctly (automatic style installation is planned for future updates).
@@ -18,7 +21,10 @@ fileManager <path>
 ```
 
 or
+<<<<<<< HEAD
 
+=======
+>>>>>>> 4d5d32e (Read the change log)
 ```bash
 ./fileManager <path>
 ```
