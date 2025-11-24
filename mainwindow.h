@@ -68,11 +68,13 @@ private slots:
     void createFileFunc(const QModelIndex &index);
     void moveFunc(const QModelIndex &index);
     void copyPasteFunc(const QModelIndex &index);
+    void showFileInf(const QModelIndex &index);
 
 private:
     Worker *worker;
     QThread *workerThread;
     QString filename;
+    QVBoxLayout *fileInfLayout;
     QFileSystemModel *fileSystem;
     QListView *fileListView;
     QAction *changeTheme;
@@ -88,8 +90,6 @@ private:
     QAction *toolbarCreatingFile;
     QHBoxLayout *pathLayout;
     PathBar *pathBar;
-    QFileSystemModel *fileSystemTree;
-    QTreeView *fileTreeView;
     QAction *toolbarMoveAction;
     QString clipboardPath;
     bool isCut;

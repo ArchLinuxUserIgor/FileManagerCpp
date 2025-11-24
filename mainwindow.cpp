@@ -29,24 +29,31 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     toolbarCreatingDir = new QAction(this);
     toolbarCreatingDir->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    toolbarCreatingDir->setToolTip("New Directory");
 
     toolbarCreatingFile = new QAction(this);
     toolbarCreatingFile->setIcon(style()->standardIcon(QStyle::SP_FileIcon));
+    toolbarCreatingFile->setToolTip("New File");
 
     toolbarMoveAction = new QAction(this);
     toolbarMoveAction->setIcon(style()->standardIcon(QStyle::SP_FileDialogStart));
+    toolbarMoveAction->setToolTip("Move");
 
     toolbarCopyAct = new QAction(this);
     toolbarCopyAct->setText("🗗");
+    toolbarCopyAct->setToolTip("Copy");
 
     toolbarCutAct = new QAction(this);
     toolbarCutAct->setText("✂");
+    toolbarCutAct->setToolTip("Cut");
 
     toolbarPasteAct = new QAction(this);
     toolbarPasteAct->setText("📋");
+    toolbarPasteAct->setToolTip("Paste");
 
     goToHome = new QAction(this);
     goToHome->setIcon(style()->standardIcon(QStyle::SP_DirHomeIcon));
+    goToHome->setToolTip("Go to home directory");
 
     QToolBar *toolbar = new QToolBar();
     toolbar->addAction(changeTheme);
@@ -110,7 +117,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     });
 
     QHBoxLayout *listLayout = new QHBoxLayout(centralWidget);
-    
+
 
     fileListView = new QListView(this);
     fileListView->setModel(fileSystem);
@@ -121,18 +128,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     fileListView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(fileListView, &QListView::customContextMenuRequested, this, &MainWindow::showContextMenu);
-
-    fileSystemTree = new QFileSystemModel(this);
-    fileSystemTree->setRootPath(QDir::homePath());
-    fileSystemTree->setFilter(QDir::NoDotAndDotDot | QDir::AllDirs);
-
-    fileTreeView = new QTreeView(this);
-    QModelIndex rootIndexTree = fileSystemTree->index(QDir::homePath());
-
-    fileTreeView->setModel(fileSystemTree);
-    fileTreeView->setRootIndex(rootIndexTree);
-    fileTreeView->setFixedHeight(500);
-    fileTreeView->setFixedWidth(200);
 
     QVBoxLayout *treeLayout = new QVBoxLayout(centralWidget);
 
@@ -180,17 +175,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         bool checked = showHidden->isChecked();
         if (checked) {
             fileSystem->setFilter(QDir::NoDotAndDotDot | QDir::AllEntries | QDir::Hidden);
-            fileSystemTree->setFilter(QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Hidden);
         } else {
             fileSystem->setFilter(QDir::NoDotAndDotDot | QDir::AllEntries);
-            fileSystemTree->setFilter(QDir::NoDotAndDotDot | QDir::AllDirs);
         }
     });
 
     connect(changeTheme, &QAction::triggered, this, &MainWindow::changeThemeFunc);
 
-    connect(fileListView, &QListView::doubleClicked, this, QOverload<const QModelIndex &>::of(&MainWindow::changeDir));
-    connect(fileTreeView, &QTreeView::doubleClicked, this, QOverload<const QModelIndex &>::of(&MainWindow::changeDir));
+    connect(fileListView, &QAbstractItemView::doubleClicked, this, QOverload<const QModelIndex &>::of(&MainWindow::changeDir));
     connect(goToParent, &QAction::triggered, this, &MainWindow::goToParentOrChildDir);
     connect(downloadsBtn, &QPushButton::clicked, this, [=]() {
         QString homePath = QDir::homePath();
@@ -256,7 +248,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         }
 
         fileListView->setRootIndex(fileSystem->setRootPath(currentPath));
-        fileTreeView->setRootIndex(fileSystemTree->setRootPath(currentPath));
     });
 
     workerThread->start();
@@ -268,8 +259,26 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(this, &MainWindow::requestMove, worker, &Worker::moveItem);
     connect(this, &MainWindow::requestCopy,  worker, &Worker::copyItem);
 
+    fileInfLayout = new QVBoxLayout(this);
+
     treeLayout->addLayout(buttonsLayout);
-    treeLayout->addWidget(fileTreeView);
+    treeLayout->addLayout(fileInfLayout);
+
+    connect(fileListView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex &current, const QModelIndex &) {
+        showFileInf(current);
+    });
+
+    QAction *clearSelectionAction = new QAction(this);
+    clearSelectionAction->setShortcut(Qt::Key_Escape);
+    fileListView->addAction(clearSelectionAction);
+
+    connect(clearSelectionAction, &QAction::triggered, this, [this]() {
+        fileListView->selectionModel()->clearSelection();
+        fileListView->selectionModel()->setCurrentIndex(QModelIndex(), QItemSelectionModel::NoUpdate);
+        showFileInf(QModelIndex());
+    });
+
+
 
     listLayout->addLayout(treeLayout);
     listLayout->addWidget(fileListView);
@@ -373,7 +382,6 @@ void MainWindow::changeDir(const QModelIndex &index) {
         historyForward.clear();
         currentPath = path;
         fileListView->setRootIndex(fileSystem->setRootPath(path));
-        fileTreeView->setRootIndex(fileSystemTree->setRootPath(path));
         goToParent->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
 
         if (pathBar) {
@@ -402,7 +410,6 @@ void MainWindow::goToParentOrChildDir() {
         historyBack.append(currentPath);
         currentPath = nextPath;
         fileListView->setRootIndex(fileSystem->setRootPath(currentPath));
-        fileTreeView->setRootIndex(fileSystemTree->setRootPath(currentPath));
 
         if (historyForward.isEmpty()) {
             goToParent->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
@@ -425,7 +432,6 @@ void MainWindow::goToParentOrChildDir() {
     historyForward.append(currentPath);
     currentPath = dir.absolutePath();
     fileListView->setRootIndex(fileSystem->setRootPath(currentPath));
-    fileTreeView->setRootIndex(fileSystemTree->setRootPath(currentPath));
 
     if (pathBar) {
         pathBar->setPath(currentPath);
@@ -736,6 +742,60 @@ void MainWindow::openPath(const QString& path) {
     }
 
     changeDir(dir);
+}
+
+void MainWindow::showFileInf(const QModelIndex &index) {
+    QLayoutItem *child;
+    while ((child = fileInfLayout->takeAt(0))) {
+        if (child->widget()) {
+            child->widget()->deleteLater();
+        }
+        delete child;
+    }
+
+    QLabel *fileName = new QLabel(this);
+
+    if (!index.isValid()) {
+        fileName->setText("Select file");
+        fileInfLayout->addWidget(fileName);
+        return;
+    }
+
+    QString path = fileSystem->filePath(index);
+    QFileInfo info(path);
+
+    QFileIconProvider iconProvider;
+
+    QIcon icon = iconProvider.icon(info);
+
+    QLabel *fileIcon = new QLabel(this);
+    fileIcon->setPixmap(icon.pixmap(32, QIcon::Normal, QIcon::On));
+    fileInfLayout->addWidget(fileIcon);
+
+    fileName->setText(info.fileName());
+
+    QLabel *entType = new QLabel(this);
+    entType->setText(info.isDir() == true ? QString("Type: Directory") : QString("Type: File"));
+    fileInfLayout->addWidget(entType);
+
+    QLabel *fileTimes = new QLabel(this);
+
+    QDateTime created = getCreatedTime(path);
+    if (!created.isValid()) {
+        created = info.lastModified();
+    }
+
+    QDateTime modified = info.lastModified();
+    QDateTime accessed = info.fileTime(QFile::FileAccessTime);
+
+    fileTimes->setText(QString("Created: %1\nModified: %2\nAccessed: %3\n").arg(created.toString("dd.MM.yyyy hh:mm:ss"), modified.toString("dd.MM.yyyy hh:mm:ss"), accessed.toString("dd.MM.yyyy hh:mm:ss")));
+    fileInfLayout->addWidget(fileTimes);
+
+    QLabel *fileSize = new QLabel(this);
+    fileSize->setText("Size: " + QLocale().formattedDataSize(info.size()));
+
+    fileInfLayout->addWidget(fileSize);
+
 }
 
 MainWindow::~MainWindow() {
