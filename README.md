@@ -6,9 +6,9 @@
 
 ## 📝 Change Log
 
-- 🔹 Redesigned the interface (screenshots below)  
-- 🔹 Added tooltips for toolbar icons  
-- 🔹 Pressing **Escape** now cancels selection of items
+- 🔹 Fixed missing filename in file information 
+- 🔹 Added item count display in directories on file information
+- 🔹 Resized icon in file information
   
 ---
 
