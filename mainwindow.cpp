@@ -264,6 +264,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     treeLayout->addLayout(buttonsLayout);
     treeLayout->addLayout(fileInfLayout);
 
+    showFileInf(QModelIndex());
+
     connect(fileListView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex &current, const QModelIndex &) {
         showFileInf(current);
     });
@@ -277,8 +279,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         fileListView->selectionModel()->setCurrentIndex(QModelIndex(), QItemSelectionModel::NoUpdate);
         showFileInf(QModelIndex());
     });
-
-
 
     listLayout->addLayout(treeLayout);
     listLayout->addWidget(fileListView);
@@ -758,6 +758,7 @@ void MainWindow::showFileInf(const QModelIndex &index) {
     if (!index.isValid()) {
         fileName->setText("Select file");
         fileInfLayout->addWidget(fileName);
+        fileName->setFixedWidth(203);
         return;
     }
 
@@ -769,10 +770,11 @@ void MainWindow::showFileInf(const QModelIndex &index) {
     QIcon icon = iconProvider.icon(info);
 
     QLabel *fileIcon = new QLabel(this);
-    fileIcon->setPixmap(icon.pixmap(32, QIcon::Normal, QIcon::On));
+    fileIcon->setPixmap(icon.pixmap(96, QIcon::Normal, QIcon::On));
     fileInfLayout->addWidget(fileIcon);
 
     fileName->setText(info.fileName());
+    fileInfLayout->addWidget(fileName);
 
     QLabel *entType = new QLabel(this);
     entType->setText(info.isDir() == true ? QString("Type: Directory") : QString("Type: File"));
@@ -791,10 +793,17 @@ void MainWindow::showFileInf(const QModelIndex &index) {
     fileTimes->setText(QString("Created: %1\nModified: %2\nAccessed: %3\n").arg(created.toString("dd.MM.yyyy hh:mm:ss"), modified.toString("dd.MM.yyyy hh:mm:ss"), accessed.toString("dd.MM.yyyy hh:mm:ss")));
     fileInfLayout->addWidget(fileTimes);
 
-    QLabel *fileSize = new QLabel(this);
-    fileSize->setText("Size: " + QLocale().formattedDataSize(info.size()));
+    int fileCount = 0;
+    QDirIterator it(path, QDir::Files | QDir::NoDotAndDotDot | QDir::Dirs, QDirIterator::NoIteratorFlags);
+    while (it.hasNext()) {
+        it.next();
+        ++fileCount;
+    }
 
-    fileInfLayout->addWidget(fileSize);
+    QLabel *fileSize = new QLabel(this);
+    fileSize->setText(info.isDir() ? "Size: " + QString::number(fileCount) + " item" : "Size: " + QLocale().formattedDataSize(info.size()));
+
+   fileInfLayout->addWidget(fileSize);
 
 }
 

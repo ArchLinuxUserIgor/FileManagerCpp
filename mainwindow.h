@@ -38,6 +38,7 @@
 #include <QLocale>
 #include <QCoreApplication>
 #include <QSettings>
+#include <QDirIterator>
 
 class MainWindow : public QMainWindow
 {
