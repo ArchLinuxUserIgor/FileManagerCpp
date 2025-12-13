@@ -17,11 +17,11 @@ The same problem:
 
 <div align="center">
 
-| ![Screenshot 1](images/screenshot1.png) | ![Screenshot 2](images/screenshot2.png) |
-|:--------------------------------------:|:--------------------------------------:|
-| Screenshot 1                           | Screenshot 2                           |
+| [<img src="images/screenshot1.png" width="450" />](images/screenshot1.png) | [<img src="images/screenshot2.png" width="450" />](images/screenshot2.png) |
+|:------------------------------------------------------------------------:|:------------------------------------------------------------------------:|
+| Screenshot 1                                                             | Screenshot 2                                                             |
 
-![Screenshot 3](images/screenshot3.png)  
+[<img src="images/screenshot3.png" width="600" />](images/screenshot3.png)  
 *Screenshot 3*
 
 </div>
