@@ -3,7 +3,6 @@
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     setWindowTitle("File Manager");
-    setFixedSize(1000, 800);
 
     fileSystem = new QFileSystemModel();
     fileSystem->setRootPath(QDir::homePath());
@@ -13,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
     setCentralWidget(centralWidget);
 
-    pathLayout = new QHBoxLayout(centralWidget);
+    pathLayout = new QHBoxLayout();
     pathBar = new PathBar(this);
     pathBar->setPath(QDir::homePath());
     pathBar->setFixedHeight(30);
@@ -116,7 +115,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         changeDir(index);
     });
 
-    QHBoxLayout *listLayout = new QHBoxLayout(centralWidget);
+    QHBoxLayout *listLayout = new QHBoxLayout();
 
 
     fileListView = new QListView(this);
@@ -129,9 +128,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     fileListView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(fileListView, &QListView::customContextMenuRequested, this, &MainWindow::showContextMenu);
 
-    QVBoxLayout *treeLayout = new QVBoxLayout(centralWidget);
+    QVBoxLayout *treeLayout = new QVBoxLayout();
 
-    QVBoxLayout *buttonsLayout = new QVBoxLayout(centralWidget);
+    QVBoxLayout *buttonsLayout = new QVBoxLayout();
     buttonsLayout->addSpacing(30);
 
     QIcon downloadsIcon = style()->standardIcon(QStyle::SP_FileDialogToParent);
@@ -259,7 +258,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(this, &MainWindow::requestMove, worker, &Worker::moveItem);
     connect(this, &MainWindow::requestCopy,  worker, &Worker::copyItem);
 
-    fileInfLayout = new QVBoxLayout(this);
+    fileInfLayout = new QVBoxLayout();
 
     treeLayout->addLayout(buttonsLayout);
     treeLayout->addLayout(fileInfLayout);
@@ -630,7 +629,7 @@ void MainWindow::showContextMenu(const QPoint &pos) {
 
             QPixmap pixIcon = entryIcon.pixmap(QSize(64, 64));
 
-            QHBoxLayout *fileNameLayout = new QHBoxLayout(props);
+            QHBoxLayout *fileNameLayout = new QHBoxLayout();
             fileNameLayout->setAlignment(Qt::AlignTop);
             fileNameLayout->setSpacing(5);
 
@@ -773,7 +772,17 @@ void MainWindow::showFileInf(const QModelIndex &index) {
     fileIcon->setPixmap(icon.pixmap(96, QIcon::Normal, QIcon::On));
     fileInfLayout->addWidget(fileIcon);
 
-    fileName->setText(info.fileName());
+    fileName->setMaximumWidth(440);
+    QTimer::singleShot(0, this, [fileName, path]() {
+        QFontMetrics fm(fileName->font());
+        QString full = QFileInfo(path).fileName();
+        QString el = fm.elidedText(full, Qt::ElideMiddle, fileName->width() + 20);
+        el.replace(QChar(0x2026), "...");
+        fileName->setText(el);
+    });
+
+    fileName->setToolTip(info.fileName());
+
     fileInfLayout->addWidget(fileName);
 
     QLabel *entType = new QLabel(this);

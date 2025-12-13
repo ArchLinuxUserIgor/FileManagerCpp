@@ -2,22 +2,20 @@
 
 **FileManagerCpp** is a file manager written in C++/Qt.  
 
----
 
 ## 📝 Change Log
 
 - 🔹 Fixed missing filename in file information 
 - 🔹 Added item count display in directories on file information
 - 🔹 Resized icon in file information
-  
----
+
 
 ## 📷 Screenshots
 
 | ![Screenshot 1](images/screenshot1.png) | ![Screenshot 2](images/screenshot2.png) | ![Screenshot 3](images/screenshot3.png) |
 |:---------------------------------------:|:---------------------------------------:|:---------------------------------------:|
 | Screenshot 1 | Screenshot 2 | Screenshot 3 |
----
+
 
 ## ⚙️ How to Use
 

@@ -39,6 +39,8 @@
 #include <QCoreApplication>
 #include <QSettings>
 #include <QDirIterator>
+#include <QFontMetrics>
+#include <QTimer>
 
 class MainWindow : public QMainWindow
 {
