@@ -15,10 +15,16 @@ The same problem:
 
 ## 📷 Screenshots
 
-| ![Screenshot 1](images/screenshot1.png) | ![Screenshot 2](images/screenshot2.png) | ![Screenshot 3](images/screenshot3.png) |
-|:---------------------------------------:|:---------------------------------------:|:---------------------------------------:|
-| Screenshot 1 | Screenshot 2 | Screenshot 3 |
+<div align="center">
 
+| ![Screenshot 1](images/screenshot1.png) | ![Screenshot 2](images/screenshot2.png) |
+|:--------------------------------------:|:--------------------------------------:|
+| Screenshot 1                           | Screenshot 2                           |
+
+![Screenshot 3](images/screenshot3.png)  
+*Screenshot 3*
+
+</div>
 
 ## ⚙️ How to Use
 
