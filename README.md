@@ -11,7 +11,7 @@
 
 The same problem:
 
-(images/sameProblem.jpg)
+![sameProblem](images/sameProblem.jpg)
 
 ## 📷 Screenshots
 
