@@ -5,10 +5,13 @@
 
 ## 📝 Change Log
 
-- 🔹 Fixed missing filename in file information 
-- 🔹 Added item count display in directories on file information
-- 🔹 Resized icon in file information
+- 🔹 Decided to solve the problem with the long file name for the back panel;
+- 🔹 Added the ability to adjust the window size;
+- 🔹 Fixed an annoying bug when launching from the terminal (see photo);
 
+The same problem:
+
+(images/sameProblem.jpg)
 
 ## 📷 Screenshots
 
