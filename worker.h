@@ -13,12 +13,12 @@ class Worker : public QObject {
     Q_OBJECT
 
 public slots:
-    void recRemove(const QString &path);
+    void recRemove(const QStringList &paths);
     void createDirFunc(const QString &parentPath, const QString &name);
     void createFileFunc(const QString &parentPath, const QString &name);
     void renameFunc(const QString &oldPath, const QString &newPath);
-    void moveItem(const QString &source, const QString &destination);
-    void copyItem(const QString &source, const QString &destination);
+    void moveItems(const QStringList &sources, const QString &destination);
+    void copyItems(const QStringList &sources, const QString &destination);
 
 signals:
     void taskFinished(const QString &action, bool ok);

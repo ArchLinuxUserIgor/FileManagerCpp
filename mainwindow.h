@@ -3,6 +3,8 @@
 
 #include "pathBar.h"
 #include "worker.h"
+#include "filelistview.h"
+#include <QApplication>
 #include <QMainWindow>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -53,7 +55,7 @@ private slots:
     void changeDir(const QModelIndex &index);
     void changeDir(const QString& path);
     void goToParentOrChildDir();
-    void showContextMenu(const QPoint &pos);
+    void showContextMenu(const QPoint &globalPos, const QModelIndex &index);
     void renameFunc(const QModelIndex &index, const QString &newName, const QString &originalName);
     QDateTime getCreatedTime(const QString &path) {
         struct statx stx;
@@ -77,9 +79,10 @@ private:
     Worker *worker;
     QThread *workerThread;
     QString filename;
+    QFrame *fileInfoContainer;
     QVBoxLayout *fileInfLayout;
     QFileSystemModel *fileSystem;
-    QListView *fileListView;
+    FileListView *fileListView;
     QAction *changeTheme;
     QString currentPath;
     QAction *goToParent;
@@ -94,7 +97,7 @@ private:
     QHBoxLayout *pathLayout;
     PathBar *pathBar;
     QAction *toolbarMoveAction;
-    QString clipboardPath;
+    QStringList clipboardPaths;
     bool isCut;
     QAction *toolbarCopyAct;
     QAction *toolbarCutAct;
@@ -102,12 +105,12 @@ private:
     QAction *goToHome;
 
 signals:
-    void requestDelete(const QString &path);
+    void requestDelete(const QStringList &paths);
     void requestCreateDir(const QString &parent, const QString &name);
     void requestCreateFile(const QString &parent, const QString &name);
     void requestRename(const QString &oldPath, const QString &newPath);
-    void requestMove(const QString &source, const QString &destination);
-    void requestCopy(const QString &source, const QString &destination);
+    void requestMove(const QStringList &sources, const QString &destination);
+    void requestCopy(const QStringList &sources, const QString &destination);
 
 public:
     MainWindow(QWidget *parent = nullptr);

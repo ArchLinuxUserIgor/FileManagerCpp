@@ -85,4 +85,10 @@ QMenu {
     border: 1px solid #c0c0c0;
     border-radius: 6px;
 }
+
+QListView::item {
+    padding: 4px 8px;
+    margin-right: 30px;
+}
+
 QMenu::item:selected { background-color: #b0d4ff; }

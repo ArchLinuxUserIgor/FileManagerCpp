@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "fileitemdelegate.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
@@ -85,29 +86,30 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     });
 
     connect(toolbarCopyAct, &QAction::triggered, this, [this]() {
-        QItemSelectionModel *selectionModel = fileListView->selectionModel();
-
-        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
-
-        clipboardPath = fileSystem->filePath(selectedIndexes.first());
+        QItemSelectionModel *sel = fileListView->selectionModel();
+        QModelIndexList idxs = sel->selectedIndexes();
+        clipboardPaths.clear();
+        for (const QModelIndex &idx : idxs) {
+            if (idx.column() == 0) {
+                clipboardPaths << fileSystem->filePath(idx);
+            }
+        }
         isCut = false;
     });
-
     connect(toolbarCutAct, &QAction::triggered, this, [this]() {
-        QItemSelectionModel *selectionModel = fileListView->selectionModel();
-
-        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
-
-        clipboardPath = fileSystem->filePath(selectedIndexes.first());
+        QItemSelectionModel *sel = fileListView->selectionModel();
+        QModelIndexList idxs = sel->selectedIndexes();
+        clipboardPaths.clear();
+        for (const QModelIndex &idx : idxs) {
+            if (idx.column() == 0) {
+                clipboardPaths << fileSystem->filePath(idx);
+            }
+        }
         isCut = true;
     });
 
     connect(toolbarPasteAct, &QAction::triggered, this, [this]() {
-        QItemSelectionModel *selectionModel = fileListView->selectionModel();
-
-        QModelIndexList selectedIndexes = selectionModel->selectedIndexes();
-
-        copyPasteFunc(selectedIndexes.first());
+        copyPasteFunc(fileListView->rootIndex());
     });
 
     connect(goToHome, &QAction::triggered, this, [this]() {
@@ -118,15 +120,28 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     QHBoxLayout *listLayout = new QHBoxLayout();
 
 
-    fileListView = new QListView(this);
+    fileListView = new FileListView(this);
     fileListView->setModel(fileSystem);
+    fileListView->setItemDelegate(new FileItemDelegate(fileListView));
+    fileListView->setFlow(QListView::TopToBottom);
+    fileListView->setWrapping(false);
+    fileListView->setSpacing(2);
+    fileListView->setUniformItemSizes(false);
+    fileListView->setViewMode(QListView::IconMode);
+    fileListView->setWordWrap(false);
+    fileListView->setResizeMode(QListView::Adjust);
+    fileListView->setMovement(QListView::Snap);
+    fileListView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    fileListView->setSelectionBehavior(QAbstractItemView::SelectItems);
+    fileListView->setDragEnabled(true);
+    fileListView->setAcceptDrops(true);
+    fileListView->setDragDropMode(QAbstractItemView::DragDrop);
 
     QModelIndex rootIndexView = fileSystem->index(QDir::homePath());
-    fileListView->setRootIndex(rootIndexView);
+    fileListView->setRootIndexAnimated(rootIndexView);
     currentPath = QDir::homePath();
 
-    fileListView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(fileListView, &QListView::customContextMenuRequested, this, &MainWindow::showContextMenu);
+    connect(fileListView, &FileListView::customContextMenuRequestedAnimated, this, &MainWindow::showContextMenu);
 
     QVBoxLayout *treeLayout = new QVBoxLayout();
 
@@ -240,13 +255,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(workerThread, &QThread::finished, worker, &QObject::deleteLater);
 
     connect(worker, &Worker::taskFinished, this, [this](const QString &action, bool ok) {
+        if (ok && isCut && (action.contains("Move") || action == "Move completed")) {
+            clipboardPaths.clear();
+            isCut = false;
+        }
         if (ok) {
             QMessageBox::information(this, "Done", action + " completed successfully");
         } else {
             QMessageBox::critical(this, "Failed", action + " failed", QMessageBox::StandardButton::Ok);
         }
 
-        fileListView->setRootIndex(fileSystem->setRootPath(currentPath));
+        fileListView->setRootIndexAnimated(fileSystem->setRootPath(currentPath));
     });
 
     workerThread->start();
@@ -255,15 +274,57 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(this, &MainWindow::requestCreateDir, worker, &Worker::createDirFunc);
     connect(this, &MainWindow::requestCreateFile, worker, &Worker::createFileFunc);
     connect(this, &MainWindow::requestRename, worker, &Worker::renameFunc);
-    connect(this, &MainWindow::requestMove, worker, &Worker::moveItem);
-    connect(this, &MainWindow::requestCopy,  worker, &Worker::copyItem);
+    connect(this, &MainWindow::requestMove, worker, &Worker::moveItems);
+    connect(this, &MainWindow::requestCopy,  worker, &Worker::copyItems);
+    connect(fileListView, &FileListView::filesDropped, this, [this](const QStringList &sources, const QString &targetDir, Qt::DropAction action) {
+        //const QString platform = QApplication::platformName();
+        //if (platform.contains("wayland", Qt::CaseInsensitive)) {
+            //action = Qt::CopyAction;
+        //}
 
-    fileInfLayout = new QVBoxLayout();
+        for (const QString &src : sources) {
+            if (targetDir.startsWith(src + QDir::separator())) {
+                return;
+            }
+        }
+
+        if (action == Qt::MoveAction) {
+            emit requestMove(sources, targetDir);
+        } else {
+            emit requestCopy(sources, targetDir);
+        }
+    });
+
+    QAction *delAction = new QAction(this);
+    delAction->setShortcut(QKeySequence::Delete);
+    fileListView->addAction(delAction);
+    connect(delAction, &QAction::triggered, this, [this]() {
+        QModelIndexList indexes = fileListView->selectionModel()->selectedIndexes();
+        QSet<QString> paths;
+        for (const QModelIndex &idx : indexes) {
+            if (idx.column() == 0) {
+                paths.insert(fileSystem->filePath(idx));
+            }
+        }
+        if (!paths.isEmpty()) {
+            if (QMessageBox::question(this, "Delete", QString("Delete %1 item(s)?").arg(paths.size())) == QMessageBox::Yes) {
+                emit requestDelete(QList<QString>(paths.begin(), paths.end()));
+            }
+        }
+    });
+
+    fileInfoContainer = new QFrame(this);
+    fileInfoContainer->setFrameShape(QFrame::NoFrame);
+    fileInfoContainer->setVisible(false);
+
+    fileInfLayout = new QVBoxLayout(fileInfoContainer);
+    fileInfLayout->setContentsMargins(0, 0, 0, 0);
+
 
     treeLayout->addLayout(buttonsLayout);
-    treeLayout->addLayout(fileInfLayout);
-
+    treeLayout->addWidget(fileInfoContainer);
     showFileInf(QModelIndex());
+
 
     connect(fileListView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex &current, const QModelIndex &) {
         showFileInf(current);
@@ -280,7 +341,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     });
 
     listLayout->addLayout(treeLayout);
-    listLayout->addWidget(fileListView);
+    QFrame *listContainer = new QFrame(this);
+    listContainer->setFrameShape(QFrame::NoFrame);
+    listContainer->setContentsMargins(0, 0, 40, 0);
+
+    QHBoxLayout *containerLayout = new QHBoxLayout(listContainer);
+    containerLayout->setContentsMargins(0, 0, 0, 0);
+    containerLayout->addWidget(fileListView);
+
+    listLayout->addWidget(listContainer);
 
     mainLayout->addWidget(toolbar);
     mainLayout->addLayout(pathLayout);
@@ -380,7 +449,7 @@ void MainWindow::changeDir(const QModelIndex &index) {
 
         historyForward.clear();
         currentPath = path;
-        fileListView->setRootIndex(fileSystem->setRootPath(path));
+        fileListView->setRootIndexAnimated(fileSystem->setRootPath(path));
         goToParent->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
 
         if (pathBar) {
@@ -400,7 +469,7 @@ void MainWindow::changeDir(const QString& path) {
     }
 
     pathBar->setPath(dir.absolutePath());
-    fileListView->setRootIndex(fileSystem->setRootPath(dir.absolutePath()));
+    fileListView->setRootIndexAnimated(fileSystem->setRootPath(dir.absolutePath()));
 }
 
 void MainWindow::goToParentOrChildDir() {
@@ -408,7 +477,7 @@ void MainWindow::goToParentOrChildDir() {
         QString nextPath = historyForward.takeLast();
         historyBack.append(currentPath);
         currentPath = nextPath;
-        fileListView->setRootIndex(fileSystem->setRootPath(currentPath));
+        fileListView->setRootIndexAnimated(fileSystem->setRootPath(currentPath));
 
         if (historyForward.isEmpty()) {
             goToParent->setIcon(style()->standardIcon(QStyle::SP_ArrowBack));
@@ -430,7 +499,7 @@ void MainWindow::goToParentOrChildDir() {
 
     historyForward.append(currentPath);
     currentPath = dir.absolutePath();
-    fileListView->setRootIndex(fileSystem->setRootPath(currentPath));
+    fileListView->setRootIndexAnimated(fileSystem->setRootPath(currentPath));
 
     if (pathBar) {
         pathBar->setPath(currentPath);
@@ -524,70 +593,66 @@ void MainWindow::createFileFunc(const QModelIndex &index) {
 
 void MainWindow::moveFunc(const QModelIndex &index) {
     if (!index.isValid()) {
-        QMessageBox::warning(this, "Warning", "Please selecet a file or directory to move");
+        QMessageBox::warning(this, "Warning", "Please select a file or directory to move");
         return;
     }
-
     QString source = fileSystem->filePath(index);
-
     QString destinationDir = QFileDialog::getExistingDirectory(this, "Select a destination to move", QDir::homePath());
-
     if (destinationDir.isEmpty()) {
         return;
     }
 
     QFileInfo sourceInfo(source);
-    QString destination = destinationDir + QDir::separator() + sourceInfo.fileName();
-
-    if (QFile::exists(destination)) {
-        QMessageBox::StandardButton reply = QMessageBox::question(this, "Overwirte", QString("'%1' already exists in the destination. Replace it?").arg(sourceInfo.fileName()), QMessageBox::Yes | QMessageBox::No);
-
+    QString proposedDest = destinationDir + QDir::separator() + sourceInfo.fileName();
+    if (QFile::exists(proposedDest)) {
+        QMessageBox::StandardButton reply = QMessageBox::question(this, "Overwrite",
+                                                                  QString("'%1' already exists in the destination. Replace it?").arg(sourceInfo.fileName()),
+                                                                  QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::No) {
             return;
         }
     }
 
-    emit requestMove(source, destination);
+    emit requestMove({source}, destinationDir);
 }
 
 void MainWindow::copyPasteFunc(const QModelIndex &index) {
-    if (clipboardPath.isEmpty()) {
+    if (clipboardPaths.isEmpty()) {
         QMessageBox::warning(this, "Warning", "Nothing to paste");
         return;
     }
 
-    QString destinationDir = fileSystem->filePath(index);
-    QFileInfo destInfo(destinationDir);
-
-    if (destInfo.isFile()) {
-        destinationDir = destInfo.dir().absolutePath();
+    QString destinationDir;
+    if (index.isValid()) {
+        destinationDir = fileSystem->filePath(index);
+        QFileInfo fi(destinationDir);
+        if (fi.isFile()) {
+            destinationDir = fi.dir().absolutePath();
+        }
+    } else {
+        destinationDir = currentPath;
     }
 
-    QFileInfo srcInfo(clipboardPath);
-    QString destination = destinationDir + QDir::separator() + srcInfo.fileName();
-
-
-    if (QFile::exists(destination)) {
-        auto reply = QMessageBox::question(this, "Overwrite", QString("'%1' already exists. Replace it?").arg(srcInfo.fileName()), QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::No) return;
+    if (destinationDir.isEmpty()) {
+        QMessageBox::critical(this, "Error", "Invalid destination");
+        return;
     }
 
     if (isCut) {
-        emit requestMove(clipboardPath, destination);
-        clipboardPath.clear();
+        emit requestMove(clipboardPaths, destinationDir);
+        clipboardPaths.clear();
         isCut = false;
     } else {
-        emit requestCopy(clipboardPath, destination);
+        emit requestCopy(clipboardPaths, destinationDir);
     }
 }
 
-void MainWindow::showContextMenu(const QPoint &pos) {
-    QModelIndex index = fileListView->indexAt(pos);
-
-    QMenu contextMenu(this);
+void MainWindow::showContextMenu(const QPoint &globalPos, const QModelIndex &index) {
 
     QString path = fileSystem->filePath(index);
     QFileInfo info(path);
+
+    QMenu contextMenu(this);
 
     QAction *createDirAction = contextMenu.addAction("New Directory");
     QAction *createFileAction = contextMenu.addAction("New File");
@@ -601,7 +666,9 @@ void MainWindow::showContextMenu(const QPoint &pos) {
         QAction *copyAction = contextMenu.addAction("Copy");
         QAction *cutAction = contextMenu.addAction("Cut");
         contextMenu.addSeparator();
-        QAction *selectedAction = contextMenu.exec(fileListView->viewport()->mapToGlobal(pos));
+
+        QAction *selectedAction = contextMenu.exec(globalPos);
+        if(!selectedAction) return;
 
         if (selectedAction == openAction) {
             if (info.isFile()) {
@@ -610,10 +677,26 @@ void MainWindow::showContextMenu(const QPoint &pos) {
                 changeDir(index);
             }
         } else if (selectedAction == removeAction) {
-            QMessageBox::StandardButton reply = QMessageBox::question(this, "Delete", QString("Are you sure you want to delete '%1'?").arg(info.fileName()), QMessageBox::Yes | QMessageBox::No);
+            QModelIndexList allIndexes = fileListView->selectionModel()->selectedIndexes();
+            QSet<QString> uniquePaths;
+            for (const QModelIndex &idx : allIndexes) {
+                if (idx.column() == 0) {
+                    uniquePaths.insert(fileSystem->filePath(idx));
+                }
+            }
 
+            if (uniquePaths.isEmpty()) return;
+
+            QString summary;
+            if (uniquePaths.size() == 1) {
+                summary = QString("Are you sure you want to delete '%1'?").arg(*uniquePaths.begin());
+            } else {
+                summary = QString("Are you sure you want to delete %1 items?").arg(uniquePaths.size());
+            }
+
+            QMessageBox::StandardButton reply = QMessageBox::question(this, "Delete", summary, QMessageBox::Yes | QMessageBox::No);
             if (reply == QMessageBox::Yes) {
-                emit requestDelete(path);
+                emit requestDelete(QList<QString>(uniquePaths.begin(), uniquePaths.end()));
             }
         } else if (selectedAction == propsAction) {
             QDialog *props = new QDialog(fileListView);
@@ -711,24 +794,28 @@ void MainWindow::showContextMenu(const QPoint &pos) {
             createFileFunc(index);
         } else if (selectedAction == moveAction) {
             moveFunc(index);
-        } else if (selectedAction == copyAction) {
-            clipboardPath = path;
-            isCut = false;
-        } else if (selectedAction == cutAction) {
-            clipboardPath = path;
-            isCut = true;
+        } else if (selectedAction == copyAction || selectedAction == cutAction) {
+            QItemSelectionModel *sel = fileListView->selectionModel();
+            QModelIndexList idxs = sel->selectedIndexes();
+            clipboardPaths.clear();
+            for (const QModelIndex &idx : idxs) {
+                if (idx.column() == 0) {
+                    clipboardPaths << fileSystem->filePath(idx);
+                }
+            }
+            isCut = (selectedAction == cutAction);
         } else if (selectedAction == pasteAction)  {
             copyPasteFunc(index);
         }
     } else {
-        QAction *selectedAction = contextMenu.exec(fileListView->viewport()->mapToGlobal(pos));
+        QAction *selectedAction = contextMenu.exec(globalPos);
 
         if (selectedAction == createDirAction) {
-            createDirFunc(index);
+            createDirFunc(QModelIndex());
         } else if (selectedAction == createFileAction) {
-            createFileFunc(index);
+            createFileFunc(QModelIndex());
         } else if (selectedAction == pasteAction) {
-            copyPasteFunc(index);
+            copyPasteFunc(QModelIndex());
         }
     }
 }
@@ -743,7 +830,8 @@ void MainWindow::openPath(const QString& path) {
     changeDir(dir);
 }
 
-void MainWindow::showFileInf(const QModelIndex &index) {
+void MainWindow::showFileInf(const QModelIndex &index)
+{
     QLayoutItem *child;
     while ((child = fileInfLayout->takeAt(0))) {
         if (child->widget()) {
@@ -752,68 +840,70 @@ void MainWindow::showFileInf(const QModelIndex &index) {
         delete child;
     }
 
-    QLabel *fileName = new QLabel(this);
+    fileInfoContainer->setVisible(true);
+    QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect(fileInfoContainer);
+    fileInfoContainer->setGraphicsEffect(effect);
 
     if (!index.isValid()) {
-        fileName->setText("Select file");
-        fileInfLayout->addWidget(fileName);
-        fileName->setFixedWidth(203);
-        return;
-    }
+        QLabel *label = new QLabel("Select file", fileInfoContainer);
+        label->setFixedWidth(203);
+        fileInfLayout->addWidget(label);
+    } else {
+        QString path = fileSystem->filePath(index);
+        QFileInfo info(path);
 
-    QString path = fileSystem->filePath(index);
-    QFileInfo info(path);
+        QFileIconProvider iconProvider;
+        QIcon icon = iconProvider.icon(info);
+        QLabel *fileIcon = new QLabel(fileInfoContainer);
+        fileIcon->setPixmap(icon.pixmap(96, QIcon::Normal, QIcon::On));
+        fileInfLayout->addWidget(fileIcon);
 
-    QFileIconProvider iconProvider;
-
-    QIcon icon = iconProvider.icon(info);
-
-    QLabel *fileIcon = new QLabel(this);
-    fileIcon->setPixmap(icon.pixmap(96, QIcon::Normal, QIcon::On));
-    fileInfLayout->addWidget(fileIcon);
-
-    fileName->setMaximumWidth(440);
-    QTimer::singleShot(0, this, [fileName, path]() {
+        QLabel *fileName = new QLabel(fileInfoContainer);
+        fileName->setMaximumWidth(440);
+        QString full = info.fileName();
         QFontMetrics fm(fileName->font());
-        QString full = QFileInfo(path).fileName();
         QString el = fm.elidedText(full, Qt::ElideMiddle, fileName->width() + 20);
         el.replace(QChar(0x2026), "...");
         fileName->setText(el);
+        fileName->setToolTip(full);
+        fileInfLayout->addWidget(fileName);
+
+        QLabel *entType = new QLabel(info.isDir() ? "Type: Directory" : "Type: File", fileInfoContainer);
+        fileInfLayout->addWidget(entType);
+
+        QDateTime created = getCreatedTime(path);
+        if (!created.isValid()) created = info.lastModified();
+        QString timeText = QString("Created: %1\nModified: %2\nAccessed: %3").arg(created.toString("dd.MM.yyyy hh:mm:ss"), info.lastModified().toString("dd.MM.yyyy hh:mm:ss"), info.fileTime(QFile::FileAccessTime).toString("dd.MM.yyyy hh:mm:ss"));
+        QLabel *fileTimes = new QLabel(timeText, fileInfoContainer);
+        fileTimes->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        fileInfLayout->addWidget(fileTimes);
+
+        int fileCount = 0;
+        if (info.isDir()) {
+            QDirIterator it(path, QDir::Files | QDir::NoDotAndDotDot | QDir::Dirs, QDirIterator::NoIteratorFlags);
+            while (it.hasNext()) {
+                it.next();
+                ++fileCount;
+            }
+        }
+        QLabel *fileSize = new QLabel(info.isDir()
+                                          ? QString("Size: %1 item%2").arg(fileCount).arg(fileCount != 1 ? "s" : "")
+                                          : QString("Size: %1").arg(QLocale().formattedDataSize(info.size())),
+                                      fileInfoContainer);
+        fileSize->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        fileInfLayout->addWidget(fileSize);
+    }
+
+    QPropertyAnimation *fadeIn = new QPropertyAnimation(effect, "opacity", this);
+    fadeIn->setDuration(150);
+    fadeIn->setStartValue(0.0);
+    fadeIn->setEndValue(1.0);
+    fadeIn->setEasingCurve(QEasingCurve::OutCubic);
+    fadeIn->start(QAbstractAnimation::DeleteWhenStopped);
+
+    connect(fadeIn, &QPropertyAnimation::finished, this, [effect]() {
+        effect->deleteLater();
     });
-
-    fileName->setToolTip(info.fileName());
-
-    fileInfLayout->addWidget(fileName);
-
-    QLabel *entType = new QLabel(this);
-    entType->setText(info.isDir() == true ? QString("Type: Directory") : QString("Type: File"));
-    fileInfLayout->addWidget(entType);
-
-    QLabel *fileTimes = new QLabel(this);
-
-    QDateTime created = getCreatedTime(path);
-    if (!created.isValid()) {
-        created = info.lastModified();
-    }
-
-    QDateTime modified = info.lastModified();
-    QDateTime accessed = info.fileTime(QFile::FileAccessTime);
-
-    fileTimes->setText(QString("Created: %1\nModified: %2\nAccessed: %3\n").arg(created.toString("dd.MM.yyyy hh:mm:ss"), modified.toString("dd.MM.yyyy hh:mm:ss"), accessed.toString("dd.MM.yyyy hh:mm:ss")));
-    fileInfLayout->addWidget(fileTimes);
-
-    int fileCount = 0;
-    QDirIterator it(path, QDir::Files | QDir::NoDotAndDotDot | QDir::Dirs, QDirIterator::NoIteratorFlags);
-    while (it.hasNext()) {
-        it.next();
-        ++fileCount;
-    }
-
-    QLabel *fileSize = new QLabel(this);
-    fileSize->setText(info.isDir() ? "Size: " + QString::number(fileCount) + " item" : "Size: " + QLocale().formattedDataSize(info.size()));
-
-   fileInfLayout->addWidget(fileSize);
-
 }
 
 MainWindow::~MainWindow() {
