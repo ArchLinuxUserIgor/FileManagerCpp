@@ -18,10 +18,12 @@
 ✅ Delete key support: File deletion via the Delete key should now work (note: still untested).  
 
 ✅ Enhanced Drag & Drop:  
+
     🔹Dragging files into a terminal now pastes their paths (as plain text).  
     🔹Dragging within the file manager performs a move operation (not a copy).
 
 ✅ Smoother UI interactions:  
+
     🔹Directory navigation is now visually smoother.  
     🔹Context menus appear with a more fluid animation.
 
