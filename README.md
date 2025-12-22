@@ -5,9 +5,18 @@
 
 ## 📝 Change Log
 
-- 🔹 Decided to solve the problem with the long file name for the back panel;
-- 🔹 Added the ability to adjust the window size;
-- 🔹 Fixed an annoying bug when launching from the terminal (see photo);
+    ✅ Fixed "Cut" functionality: The "Cut" operation now works correctly and without errors.  
+    ✅ Improved error messages: Fixed duplicated or malformed error texts (e.g., “Move failed failed”).  
+    ✅ Multi-file operations: You can now copy, delete, or move multiple files at once.  
+    ✅ Accurate selection width: Item selection now matches the actual filename width instead of spanning the entire window.  
+    ✅ Multi-select support: Hold Ctrl and left-click to select multiple items (Shift-based selection is not implemented yet).  
+    ✅ Delete key support: File deletion via the Delete key should now work (note: still untested).  
+    ✅ Enhanced Drag & Drop:  
+        Dragging files into a terminal now pastes their paths (as plain text).  
+        Dragging within the file manager performs a move operation (not a copy).
+    ✅ Smoother UI interactions:  
+        Directory navigation is now visually smoother.  
+        Context menus appear with a more fluid animation.
 
 The same problem:
 
