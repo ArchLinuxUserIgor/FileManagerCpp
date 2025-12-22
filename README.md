@@ -13,9 +13,9 @@
 
 ✅ Accurate selection width: Item selection now matches the actual filename width instead of spanning the entire window.  
 
-✅ Multi-select support: Hold Ctrl and left-click to select multiple items (Shift-based selection is not implemented yet).  
+✅ Multi-select support: Hold Ctrl and left-click to select multiple items.  
 
-✅ Delete key support: File deletion via the Delete key should now work (note: still untested).  
+✅ Delete key support: File deletion via the Delete key should now work.  
 
 ✅ Enhanced Drag & Drop:  
 
