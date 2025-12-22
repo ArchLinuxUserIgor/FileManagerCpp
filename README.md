@@ -27,10 +27,6 @@
     🔹Directory navigation is now visually smoother.  
     🔹Context menus appear with a more fluid animation.
 
-The same problem:
-
-![sameProblem](images/sameProblem.jpg)
-
 ## 📷 Screenshots
 <div align="center">
 
