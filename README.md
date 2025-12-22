@@ -11,6 +11,7 @@
 ✅ Accurate selection width: Item selection now matches the actual filename width instead of spanning the entire window.  
 ✅ Multi-select support: Hold Ctrl and left-click to select multiple items (Shift-based selection is not implemented yet).  
 ✅ Delete key support: File deletion via the Delete key should now work (note: still untested).  
+
 ✅ Enhanced Drag & Drop:  
     🔹Dragging files into a terminal now pastes their paths (as plain text).  
     🔹Dragging within the file manager performs a move operation (not a copy).
